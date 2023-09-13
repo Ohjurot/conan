@@ -1,13 +1,10 @@
 from collections import OrderedDict
 
-import pytest
-
 from conan.api.model import Remote
 from conans.client.graph.graph_error import GraphConflictError, GraphMissingError
 from conans.test.assets.genconanfile import GenConanfile
 from conans.test.integration.graph.core.graph_manager_base import GraphManagerTest
 from conans.test.utils.tools import TestClient, TestServer, NO_SETTINGS_PACKAGE_ID
-from conans.util.files import save
 
 
 class TestVersionRanges(GraphManagerTest):
@@ -391,13 +388,6 @@ def test_remote_version_ranges():
                                                     "Download (default)")})
 
 
-@pytest.mark.skip(reason="TODO: Test that the server is only hit once for dep/*@user/channel")
-def test_remote_version_ranges_optimized():
-    t = TestClient(default_server_user=True)
-    save(t.cache.default_profile_path, "")
-    save(t.cache.settings_path, "")
-
-
 def test_different_user_channel_resolved_correctly():
     server1 = TestServer()
     server2 = TestServer()
@@ -414,3 +404,15 @@ def test_different_user_channel_resolved_correctly():
     client2.run("install --requires=lib/[>=1.0]@conan/testing")
     assert f"lib/1.0@conan/testing: Retrieving package {NO_SETTINGS_PACKAGE_ID} " \
            f"from remote 'server2' " in client2.out
+
+
+def test_unknown_options():
+    c = TestClient()
+    c.save({"conanfile.py": GenConanfile("lib", "2.0")})
+    c.run("create .")
+
+    c.run("graph info --requires=lib/[>1.2,<1.4]", assert_error=True)
+    assert '"<1.4" in version range ">1.2,<1.4" is not a valid option' in c.out
+
+    c.run("graph info --requires=lib/[>1.2,unknown_conf]")
+    assert 'WARN: Unrecognized version range option "unknown_conf" in ">1.2,unknown_conf"' in c.out

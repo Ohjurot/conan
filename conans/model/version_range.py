@@ -25,6 +25,8 @@ class _ConditionSet:
     def _parse_expression(expression):
         if expression == "" or expression == "*":
             return [_Condition(">=", Version("0.0.0"))]
+        elif len(expression) == 1:
+            raise ConanException(f'Error parsing version range "{expression}"')
 
         operator = expression[0]
         if operator not in (">", "<", "^", "~", "="):
@@ -38,7 +40,7 @@ class _ConditionSet:
                 index = 2
         version = expression[index:]
         if version == "":
-            raise ConanException(f"Error parsing version range {expression}")
+            raise ConanException(f'Error parsing version range "{expression}"')
         if operator == "~":  # tilde minor
             v = Version(version)
             index = 1 if len(v.main) > 1 else 0
@@ -94,6 +96,13 @@ class VersionRange:
             if "include_prerelease" in t:
                 prereleases = True
                 break
+            else:
+                t = t.strip()
+                if len(t) > 0 and t[0].isalpha():
+                    from conan.api.output import ConanOutput
+                    ConanOutput().warning(f'Unrecognized version range option "{t}" in "{expression}"')
+                else:
+                    raise ConanException(f'"{t}" in version range "{expression}" is not a valid option')
         version_expr = tokens[0]
         self.condition_sets = []
         for alternative in version_expr.split("||"):
